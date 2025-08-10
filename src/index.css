@@ -1,0 +1,187 @@
+/* CSS Variables - Design Tokens */
+:root {
+  /* Colors (dark-first) */
+  --bg-1: #0B1526;        /* page/hero background */
+  --bg-2: #0F1E34;        /* cards/raised sections */
+  --surface: #101B2D;     /* inputs/panels */
+  --ink: #E7EEF6;         /* text on dark */
+  --ink-muted: #A7B3C6;   /* secondary text on dark */
+  --ink-dark: #202733;    /* text on light */
+  --bg-light: #F5F7FA;    /* alternating light sections */
+  --stroke: #1E2C47;      /* dividers/borders */
+  --accent-1: #2F6BFF;    /* primary CTAs/links/focus ring */
+  --accent-2: #00C389;    /* positive highlight */
+  --amber-cta: #FFB020;   /* warnings / "risk window" */
+  --scarlet: #E54B4B;     /* errors/critical */
+
+  /* Typography */
+  font-family: 'Inter', sans-serif;
+  line-height: 1.6;
+  font-weight: 400;
+
+  color-scheme: dark;
+  color: var(--ink);
+  background-color: var(--bg-1);
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Base styles */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  background: var(--bg-1);
+  color: var(--ink);
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Newsreader', serif;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.2;
+}
+
+h1 {
+  font-size: clamp(40px, 6vw, 72px);
+}
+
+h2 {
+  font-size: clamp(28px, 4vw, 44px);
+}
+
+h3 {
+  font-size: clamp(24px, 3vw, 28px);
+}
+
+body, p, span, div, input, textarea, button {
+  font-family: 'Inter', sans-serif;
+  font-size: clamp(17px, 2vw, 18px);
+  line-height: 1.6;
+}
+
+/* Links */
+a {
+  color: var(--accent-1);
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+a:visited {
+  color: #2B5FE3;
+}
+
+/* Focus states for accessibility */
+*:focus-visible {
+  outline: 2px solid var(--accent-1);
+  outline-offset: 2px;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Utility classes */
+.container {
+  max-width: min(1200px, calc(100vw - 32px));
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Component base styles */
+.card {
+  background: var(--bg-2);
+  border-radius: 16px;
+  border: 1px solid rgba(30, 44, 71, 0.4);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.btn {
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 500;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+}
+
+.btn-primary {
+  background: var(--accent-1);
+  color: #FFFFFF;
+}
+
+.btn-primary:hover {
+  background: #2557E6;
+  text-decoration: none;
+}
+
+.btn-primary:visited {
+  background: var(--accent-1);
+  color: #FFFFFF;
+}
+
+.btn-primary:visited:hover {
+  background: #2557E6;
+  color: #FFFFFF;
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--accent-1);
+  border: 1px solid var(--accent-1);
+}
+
+.btn-secondary:hover {
+  background: var(--accent-1);
+  color: #FFFFFF;
+  text-decoration: none;
+}
+
+.btn-secondary:visited {
+  background: transparent;
+  color: var(--accent-1);
+  border: 1px solid var(--accent-1);
+}
+
+.btn-secondary:visited:hover {
+  background: var(--accent-1);
+  color: #FFFFFF;
+} 

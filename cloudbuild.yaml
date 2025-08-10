@@ -1,0 +1,78 @@
+steps:
+  # Build the Docker image with build arguments
+  - name: 'gcr.io/cloud-builders/docker'
+    args: 
+      - 'build'
+      - '--build-arg'
+      - 'NODE_VERSION=${_NODE_VERSION}'
+      - '--build-arg'
+      - 'NGINX_VERSION=${_NGINX_VERSION}'
+      - '--build-arg'
+      - 'PORT=${_PORT}'
+      - '-t'
+      - '${_REGISTRY_HOSTNAME}/$PROJECT_ID/${_SERVICE_NAME}:${BUILD_ID}'
+      - '-t'
+      - '${_REGISTRY_HOSTNAME}/$PROJECT_ID/${_SERVICE_NAME}:latest'
+      - '.'
+
+  # Push the image to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - '${_REGISTRY_HOSTNAME}/$PROJECT_ID/${_SERVICE_NAME}:${BUILD_ID}'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - '${_REGISTRY_HOSTNAME}/$PROJECT_ID/${_SERVICE_NAME}:latest'
+
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - '${_SERVICE_NAME}'
+      - '--image'
+      - '${_REGISTRY_HOSTNAME}/$PROJECT_ID/${_SERVICE_NAME}:${BUILD_ID}'
+      - '--region'
+      - '${_REGION}'
+      - '--platform'
+      - 'managed'
+      - '${_AUTH_FLAG}'
+      - '--port'
+      - '${_PORT}'
+      - '--memory'
+      - '${_MEMORY}'
+      - '--cpu'
+      - '${_CPU}'
+      - '--min-instances'
+      - '${_MIN_INSTANCES}'
+      - '--max-instances'
+      - '${_MAX_INSTANCES}'
+      - '--concurrency'
+      - '${_CONTAINER_CONCURRENCY}'
+      - '--timeout'
+      - '${_TIMEOUT_SECONDS}'
+      - '--set-env-vars'
+      - 'GEMINI_API_KEY=${_GEMINI_API_KEY}'
+
+# Default substitutions - these will be overridden by deployment scripts
+substitutions:
+  _SERVICE_NAME: 'my-app'
+  _REGION: 'us-west1'
+  _REGISTRY_HOSTNAME: 'gcr.io'
+  _PORT: '8080'
+  _MEMORY: '512Mi'
+  _CPU: '1'
+  _MIN_INSTANCES: '0'
+  _MAX_INSTANCES: '3'
+  _CONTAINER_CONCURRENCY: '80'
+  _TIMEOUT_SECONDS: '300'
+  _NODE_VERSION: '18'
+  _NGINX_VERSION: 'alpine'
+  _AUTH_FLAG: '--allow-unauthenticated'
+  _GEMINI_API_KEY: 'your_api_key_here'
+
+options:
+  logging: CLOUD_LOGGING_ONLY 

@@ -1,0 +1,133 @@
+{
+  "site": {
+    "title": "MyGlobal Group — Dual-Use & AI Strategy",
+    "description": "Consulting at the intersection of defense, industry, and AI: validation, trend intelligence, executive training, healthcare AI, behavioral analytics, and logistics.",
+    "tagline": "Dual-Use Strategy and AI Execution for Complex Environments",
+    "domain": "myglobal.group"
+  },
+  "branding": {
+    "logo": {
+      "text": "MyGlobal Group",
+      "hasIcon": false,
+      "iconUrl": ""
+    },
+    "colors": {
+      "primary": "#2F6BFF",
+      "secondary": "#2B5FE3", 
+      "accent": "#00C389",
+      "background": "#0B1526",
+      "text": "#E7EEF6",
+      "textLight": "#A7B3C6"
+    },
+    "fonts": {
+      "heading": "Newsreader",
+      "body": "Inter"
+    }
+  },
+  "hero": {
+    "headline": "Dual-Use Strategy and AI Execution for Complex Environments.",
+    "subheadline": "Strategic consulting services bridging defense innovation and civilian applications through AI-powered solutions and battlefield-validated technologies.",
+    "cta": {
+      "primary": "Book a briefing",
+      "secondary": "Contact us"
+    },
+    "image": {
+      "url": "",
+      "alt": "Product showcase"
+    },
+    "backgroundStyle": "gradient"
+  },
+  "features": [
+    {
+      "title": "Defense & Security",
+      "description": "Battlefield validation, combat trend intelligence, and dual-use tech scouting",
+      "icon": "🛡️"
+    },
+    {
+      "title": "Enterprise & Industry", 
+      "description": "AI horizon scanning, transformation programs, and implementation acceleration",
+      "icon": "🏢"
+    },
+    {
+      "title": "Education & Training",
+      "description": "Executive war-room workshops and AI education programs",
+      "icon": "🎯"
+    },
+    {
+      "title": "Healthcare",
+      "description": "AI-powered support systems for specialized care and real-time guidance",
+      "icon": "🏥"
+    },
+    {
+      "title": "AI Behavioral Analysis",
+      "description": "Privacy-first crowd analytics and real-time behavioral insights",
+      "icon": "📊"
+    },
+    {
+      "title": "Logistics & Supply Chain",
+      "description": "Risk-optimized routing and dynamic corridor planning",
+      "icon": "🚢"
+    }
+  ],
+  "valueProposition": {
+    "headline": "Who we are",
+    "description": "Strategic consulting at the intersection of defense, enterprise, and AI innovation",
+    "benefits": [
+      "Battlefield-validated technology solutions",
+      "Real-time intelligence and analytics",
+      "Privacy-first approach",
+      "Executive-level strategic guidance"
+    ]
+  },
+  "useCases": [
+    {
+      "title": "Defense & Government",
+      "description": "Combat-tested solutions for complex security environments",
+      "features": ["Live-combat trials", "Combat trend intelligence", "Dual-use integration"]
+    },
+    {
+      "title": "Enterprise & Industry",
+      "description": "AI transformation at speed and scale", 
+      "features": ["ROI roadmaps", "Implementation PMO", "Change acceleration"]
+    }
+  ],
+  "callToAction": {
+    "headline": "Work with us",
+    "description": "Strategic consulting for defense, enterprise, and government clients",
+    "cta": {
+      "primary": "Book a briefing",
+      "secondary": "Contact us"
+    },
+    "urgency": "",
+    "trustSignals": [
+      "Defense-grade expertise",
+      "Battlefield-validated solutions",
+      "Privacy-first approach"
+    ]
+  },
+  "footer": {
+    "company": {
+      "name": "MyGlobal Group",
+      "description": "Strategic consulting at the intersection of defense, enterprise, and AI innovation"
+    },
+    "links": {
+      "services": ["Crowd Analytics", "Team", "Contact"],
+      "company": ["Home", "Privacy", "Terms"],
+      "legal": ["Privacy", "Terms"]  
+    },
+    "social": {
+      "twitter": "",
+      "linkedin": "",
+      "github": ""
+    },
+    "contact": {
+      "email": "hello@myglobal.group",
+      "phone": ""
+    }
+  },
+  "seo": {
+    "keywords": ["defense consulting", "AI strategy", "dual-use technology", "behavioral analytics", "crowd analytics", "enterprise AI"],
+    "ogImage": "",
+    "twitterCard": "summary_large_image"
+  }
+}

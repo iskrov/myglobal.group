@@ -1,0 +1,85 @@
+# ============================================
+# DEPLOYMENT CONFIGURATION TEMPLATE
+# ============================================
+# Copy this file to 'deployment-config.env' and customize for your project
+# This is the ONLY file you need to edit when copying to a new project
+
+# ============================================
+# PROJECT IDENTIFICATION
+# ============================================
+
+# Project Name (used for service naming and display)
+PROJECT_NAME=zgraia
+
+# Google Cloud Project ID (leave empty to auto-detect from gcloud config)
+PROJECT_ID=
+
+# Service Name (leave empty to auto-generate from PROJECT_NAME)
+SERVICE_NAME=
+
+# ============================================
+# DEPLOYMENT CONFIGURATION
+# ============================================
+
+# Google Cloud Region
+REGION=us-west1
+
+# Container Registry (gcr.io or Artifact Registry URL)
+REGISTRY_HOSTNAME=gcr.io
+
+# ============================================
+# APPLICATION CONFIGURATION
+# ============================================
+
+# API Keys and Secrets (add to .env.local, not here)
+# GEMINI_API_KEY=your_key_here
+
+# Application Environment
+NODE_ENV=production
+
+# ============================================
+# CLOUD RUN CONFIGURATION
+# ============================================
+
+# Container Configuration
+PORT=8080
+MEMORY=512Mi
+CPU=1
+
+# Scaling Configuration
+MIN_INSTANCES=0
+MAX_INSTANCES=3
+CONTAINER_CONCURRENCY=80
+
+# Request Configuration
+TIMEOUT_SECONDS=300
+
+# Security Configuration
+ALLOW_UNAUTHENTICATED=true
+SERVICE_ACCOUNT=
+
+# ============================================
+# BUILD CONFIGURATION
+# ============================================
+
+# Docker Build Arguments
+NODE_VERSION=18
+NGINX_VERSION=alpine
+
+# ============================================
+# CUSTOMIZATION NOTES
+# ============================================
+# 
+# Quick Setup for New Project:
+# 1. Copy this file to 'deployment-config.env'
+# 2. Set PROJECT_NAME to your project name
+# 3. Optionally set PROJECT_ID (or let it auto-detect)
+# 4. Create .env.local with your API keys
+# 5. Run: ./scripts/setup-project.sh
+# 6. Deploy: ./scripts/deploy.sh
+#
+# Advanced Configuration:
+# - Leave SERVICE_NAME empty to auto-generate: {PROJECT_NAME}-app
+# - Leave PROJECT_ID empty to use current gcloud project
+# - Customize resource limits as needed for your app
+# 

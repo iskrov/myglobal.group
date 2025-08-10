@@ -1,0 +1,123 @@
+{
+  "site": {
+    "title": "Your Amazing Product",
+    "description": "Transform your business with our innovative solution",
+    "tagline": "Innovation Made Simple",
+    "domain": "yourproduct.com"
+  },
+  "branding": {
+    "logo": {
+      "text": "YourBrand",
+      "hasIcon": false,
+      "iconUrl": ""
+    },
+    "colors": {
+      "primary": "#3B82F6",
+      "secondary": "#1E40AF", 
+      "accent": "#F59E0B",
+      "background": "#FFFFFF",
+      "text": "#1F2937",
+      "textLight": "#6B7280"
+    },
+    "fonts": {
+      "heading": "Inter",
+      "body": "Inter"
+    }
+  },
+  "hero": {
+    "headline": "Transform Your Business Today",
+    "subheadline": "Discover the power of innovation with our cutting-edge solution designed for modern businesses.",
+    "cta": {
+      "primary": "Get Started Free",
+      "secondary": "Learn More"
+    },
+    "image": {
+      "url": "",
+      "alt": "Product showcase"
+    },
+    "backgroundStyle": "gradient"
+  },
+  "features": [
+    {
+      "title": "Lightning Fast",
+      "description": "Experience unparalleled speed and performance",
+      "icon": "⚡"
+    },
+    {
+      "title": "Secure & Reliable",
+      "description": "Enterprise-grade security you can trust",
+      "icon": "🔒"
+    },
+    {
+      "title": "Easy Integration",
+      "description": "Seamlessly integrate with your existing workflow",
+      "icon": "🔧"
+    }
+  ],
+  "valueProposition": {
+    "headline": "Why Choose Us",
+    "description": "We deliver results that matter to your business",
+    "benefits": [
+      "Save 10+ hours per week",
+      "Increase productivity by 40%",
+      "Reduce costs by 30%",
+      "24/7 expert support"
+    ]
+  },
+  "useCases": [
+    {
+      "title": "Small Businesses",
+      "description": "Perfect for growing teams",
+      "features": ["Easy setup", "Affordable pricing", "Basic support"]
+    },
+    {
+      "title": "Enterprises",
+      "description": "Scale with confidence", 
+      "features": ["Advanced features", "Custom integrations", "Priority support"]
+    },
+    {
+      "title": "Developers",
+      "description": "Built for technical teams",
+      "features": ["API access", "Custom workflows", "Advanced analytics"]
+    }
+  ],
+  "callToAction": {
+    "headline": "Ready to Get Started?",
+    "description": "Join thousands of satisfied customers today",
+    "cta": {
+      "primary": "Start Free Trial",
+      "secondary": "Contact Sales"
+    },
+    "urgency": "Limited time offer - 30% off first year",
+    "trustSignals": [
+      "No credit card required",
+      "30-day money-back guarantee",
+      "Cancel anytime"
+    ]
+  },
+  "footer": {
+    "company": {
+      "name": "YourCompany",
+      "description": "Making business better through innovation"
+    },
+    "links": {
+      "product": ["Features", "Pricing", "API"],
+      "company": ["About", "Careers", "Contact"],
+      "legal": ["Privacy", "Terms", "Security"]
+    },
+    "social": {
+      "twitter": "",
+      "linkedin": "",
+      "github": ""
+    },
+    "contact": {
+      "email": "hello@yourcompany.com",
+      "phone": "+1 (555) 123-4567"
+    }
+  },
+  "seo": {
+    "keywords": ["innovation", "business", "productivity", "software"],
+    "ogImage": "",
+    "twitterCard": "summary_large_image"
+  }
+} 
