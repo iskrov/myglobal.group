@@ -1,7 +1,7 @@
 {
   "site": {
-    "title": "MyGlobal Group — Dual-Use & AI Strategy",
-    "description": "Consulting at the intersection of defense, industry, and AI: validation, trend intelligence, executive training, healthcare AI, behavioral analytics, and logistics.",
+    "title": "MyGlobal Group: Dual-Use & AI Strategy Consulting",
+    "description": "Strategic consulting at the intersection of defense, enterprise, and AI innovation. Dual-use technology expertise for modern challenges.",
     "tagline": "Dual-Use Strategy and AI Execution for Complex Environments",
     "domain": "myglobal.group"
   },
@@ -126,7 +126,7 @@
     }
   },
   "seo": {
-    "keywords": ["defense consulting", "AI strategy", "dual-use technology", "behavioral analytics", "crowd analytics", "enterprise AI"],
+    "keywords": ["defense consulting", "AI strategy", "dual-use technology", "behavioral analytics", "crowd analytics", "enterprise AI", "defense technology", "strategic consulting"],
     "ogImage": "",
     "twitterCard": "summary_large_image"
   }
