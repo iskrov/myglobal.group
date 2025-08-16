@@ -775,8 +775,8 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             <nav className="desktop-nav" style={{ display: 'flex', gap: '32px' }}>
               <Link to="/projects" style={{ color: 'var(--ink)', textDecoration: 'none' }}>Projects</Link>
               <Link to="/consulting" style={{ color: 'var(--ink)', textDecoration: 'none' }}>Consulting</Link>
-              <Link to="/team" style={{ color: 'var(--ink)', textDecoration: 'none' }}>Team</Link>
               <Link to="/community" style={{ color: 'var(--ink)', textDecoration: 'none' }}>Community</Link>
+              <Link to="/team" style={{ color: 'var(--ink)', textDecoration: 'none' }}>Team</Link>
               <a href="/#contact" style={{ color: 'var(--ink)', textDecoration: 'none' }}>Contact</a>
             </nav>
             {/* Mobile menu button */}
@@ -819,8 +819,8 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <nav className="mobile-nav scroll-animate" data-immediate="true" style={{ display: 'grid', gap: 12 }}>
             <Link onClick={() => setIsMenuOpen(false)} to="/projects" style={{ color: 'var(--ink)', textDecoration: 'none' }}>Projects</Link>
             <Link onClick={() => setIsMenuOpen(false)} to="/consulting" style={{ color: 'var(--ink)', textDecoration: 'none' }}>Consulting</Link>
-            <Link onClick={() => setIsMenuOpen(false)} to="/team" style={{ color: 'var(--ink)', textDecoration: 'none' }}>Team</Link>
             <Link onClick={() => setIsMenuOpen(false)} to="/community" style={{ color: 'var(--ink)', textDecoration: 'none' }}>Community</Link>
+            <Link onClick={() => setIsMenuOpen(false)} to="/team" style={{ color: 'var(--ink)', textDecoration: 'none' }}>Team</Link>
             <a onClick={() => setIsMenuOpen(false)} href="/#contact" style={{ color: 'var(--ink)', textDecoration: 'none' }}>Contact</a>
           </nav>
         </div>

@@ -428,20 +428,6 @@ const HomePage: React.FC = () => {
         </div>
       </section>
 
-      {/* Team Animation Snapshot */}
-      <section style={{ padding: '80px 0', background: 'var(--bg-1)' }}>
-        <div className="container" style={{ textAlign: 'center' }}>
-          <h2 className="scroll-animate" style={{ fontFamily: 'Newsreader, serif', fontSize: 'clamp(28px, 3.5vw, 44px)', fontWeight: 700, color: 'var(--ink)', marginBottom: 24 }}>Our Team</h2>
-          <p className="scroll-animate" style={{ color: 'var(--ink-muted)', margin: '0 auto 32px', maxWidth: 720 }}>A glimpse of the people behind our ventures.</p>
-          <div className="scroll-animate" style={{ margin: '0 auto 24px', maxWidth: 900 }}>
-            <TeamSphere height={420} />
-          </div>
-          <div className="scroll-animate">
-            <Link to='/team' className='btn btn-primary' style={{ padding: '12px 24px' }}>Meet the Team</Link>
-          </div>
-        </div>
-      </section>
-
       {/* Community Snapshot - redesigned to match Featured Projects */}
       <section style={{ padding: '80px 0', background: 'var(--bg-2)' }}>
         <div className="container">
@@ -492,12 +478,21 @@ const HomePage: React.FC = () => {
             <Link to="/community" className="btn btn-primary" style={{ padding: '12px 32px' }}>Explore Community</Link>
           </div>
         </div>
+            </section>
+
+      {/* Team Animation Snapshot */}
+      <section id="team" style={{ padding: '80px 0', background: 'var(--bg-1)' }}>
+        <div className="container" style={{ textAlign: 'center' }}>
+          <h2 className="scroll-animate" style={{ fontFamily: 'Newsreader, serif', fontSize: 'clamp(28px, 3.5vw, 44px)', fontWeight: 700, color: 'var(--ink)', marginBottom: 24 }}>Our Team</h2>
+          <p className="scroll-animate" style={{ color: 'var(--ink-muted)', margin: '0 auto 32px', maxWidth: 720 }}>A glimpse of the people behind our ventures.</p>
+          <div className="scroll-animate" style={{ margin: '0 auto 24px', maxWidth: 900 }}>
+            <TeamSphere height={420} />
+          </div>
+          <div className="scroll-animate">
+            <Link to='/team' className='btn btn-primary' style={{ padding: '12px 24px' }}>Meet the Team</Link>
+          </div>
+        </div>
       </section>
-
-      
-
-
-      
 
       {/* Contact CTA */}
       <section id="contact" style={{ padding: '100px 0', background: 'var(--bg-2)', textAlign: 'center' }}>
