@@ -1,705 +1,17 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import ProjectsPage from './pages/ProjectsPage';
+import ConsultingPage from './pages/ConsultingPage';
+import TeamPage from './pages/TeamPage';
+import CommunityPage from './pages/CommunityPage';
+import HomePage from './pages/HomePage';
+import TeamSphere from './components/TeamSphere';
+import { useScrollReveal } from './components/ScrollReveal';
+import AnimatedNumber from './components/AnimatedNumber';
 
-// OPTIMIZED MURMURATION - Fewer Birds, Better Performance, Wing Animation
-const FlockAnimation: React.FC = () => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    
-    // Set canvas size
-    const resizeCanvas = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    };
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
-
-    // Vector class for physics
-    class Vector {
-      x: number;
-      y: number;
-      z: number; // Add Z dimension for depth
-
-      constructor(x: number, y: number, z: number = 0) {
-        this.x = x;
-        this.y = y;
-        this.z = z;
-      }
-
-      add(v: Vector): Vector {
-        this.x += v.x;
-        this.y += v.y;
-        this.z += v.z;
-        return this;
-      }
-
-      sub(v: Vector): Vector {
-        this.x -= v.x;
-        this.y -= v.y;
-        this.z -= v.z;
-        return this;
-      }
-
-      mult(n: number): Vector {
-        this.x *= n;
-        this.y *= n;
-        this.z *= n;
-        return this;
-      }
-
-      div(n: number): Vector {
-        this.x /= n;
-        this.y /= n;
-        this.z /= n;
-        return this;
-      }
-
-      mag(): number {
-        return Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z);
-      }
-
-      normalize(): Vector {
-        const m = this.mag();
-        if (m > 0) this.div(m);
-        return this;
-      }
-
-      limit(max: number): Vector {
-        if (this.mag() > max) {
-          this.normalize();
-          this.mult(max);
-        }
-        return this;
-      }
-
-      static dist(a: Vector, b: Vector): number {
-        const dx = a.x - b.x;
-        const dy = a.y - b.y;
-        const dz = a.z - b.z;
-        return Math.sqrt(dx * dx + dy * dy + dz * dz);
-      }
-
-      static random(canvas: HTMLCanvasElement): Vector {
-        return new Vector(
-          Math.random() * canvas.width,
-          Math.random() * canvas.height,
-          Math.random() * 2 - 1 // Z from -1 to 1
-        );
-      }
-
-      clone(): Vector {
-        return new Vector(this.x, this.y, this.z);
-      }
-    }
-
-    // Bird class with 3D depth and flock support
-    class Bird {
-      position: Vector;
-      velocity: Vector;
-      acceleration: Vector;
-      maxSpeed: number;
-      maxForce: number;
-      baseSize: number; // Base size before depth scaling
-      alpha: number;
-      targetPosition: Vector | null;
-      letterType: 'M' | 'G1' | 'G2' | null;
-      wingPhase: number;
-      depth: number; // Current depth (0 = far, 1 = close)
-      targetDepth: number; // Target depth for smooth transitions
-      flockId: number; // Which flock this bird belongs to
-      
-      constructor(x: number, y: number, z: number = 0, flockId: number = 0) {
-        this.position = new Vector(x, y, z);
-        this.velocity = new Vector(
-          (Math.random() - 0.5) * 2,
-          (Math.random() - 0.5) * 2,
-          (Math.random() - 0.5) * 0.5
-        );
-        this.acceleration = new Vector(0, 0, 0);
-        this.maxSpeed = 3.5;
-        this.maxForce = 0.2;
-        this.baseSize = 3 + Math.random() * 2; // TINY: 3-5px birds
-        this.alpha = 0.95;
-        this.targetPosition = null;
-        this.letterType = null;
-        this.wingPhase = Math.random() * Math.PI * 2;
-        this.depth = 0.5;
-        this.targetDepth = 0.5;
-        this.flockId = flockId;
-      }
-      
-      // Calculate apparent size based on depth (perspective)
-      getApparentSize(): number {
-        // Depth 0 = far (small), Depth 1 = close (large)
-        const depthScale = 0.6 + this.depth * 0.8; // Scale from 0.6x to 1.4x
-        return this.baseSize * depthScale;
-      }
-
-      // Calculate opacity based on depth (atmospheric perspective)
-      getApparentAlpha(): number {
-        // Far birds are more faded
-        const depthAlpha = 0.3 + this.depth * 0.7;
-        return this.alpha * depthAlpha;
-      }
-
-      align(birds: Bird[]): Vector {
-        const perceptionRadius = 40; // Smaller for tighter flocks
-        const steering = new Vector(0, 0, 0);
-        let total = 0;
-        
-        for (const other of birds) {
-          // Only align with birds from the same flock
-          if (other !== this && other.flockId === this.flockId) {
-            const d = Vector.dist(this.position, other.position);
-            if (d < perceptionRadius) {
-              steering.add(other.velocity);
-              total++;
-            }
-          }
-        }
-        
-        if (total > 0) {
-          steering.div(total);
-          steering.normalize();
-          steering.mult(this.maxSpeed);
-          steering.sub(this.velocity);
-          steering.limit(this.maxForce);
-        }
-        
-        return steering;
-      }
-      
-      cohesion(birds: Bird[]): Vector {
-        const perceptionRadius = 40; // Smaller for tighter flocks
-        const steering = new Vector(0, 0, 0);
-        let total = 0;
-        
-        for (const other of birds) {
-          // Only cohere with birds from the same flock
-          if (other !== this && other.flockId === this.flockId) {
-            const d = Vector.dist(this.position, other.position);
-            if (d < perceptionRadius) {
-              steering.add(other.position);
-              total++;
-            }
-          }
-        }
-        
-        if (total > 0) {
-          steering.div(total);
-          steering.sub(this.position);
-          steering.normalize();
-          steering.mult(this.maxSpeed);
-          steering.sub(this.velocity);
-          steering.limit(this.maxForce);
-        }
-        
-        return steering;
-      }
-      
-      separation(birds: Bird[]): Vector {
-        const perceptionRadius = 20; // Smaller for tiny birds
-        const steering = new Vector(0, 0, 0);
-        let total = 0;
-        
-        for (const other of birds) {
-          // Separate from all birds regardless of flock
-          const d = Vector.dist(this.position, other.position);
-          if (other !== this && d < perceptionRadius) {
-            const diff = this.position.clone();
-            diff.sub(other.position);
-            diff.div(d * d);
-            steering.add(diff);
-            total++;
-          }
-        }
-        
-        if (total > 0) {
-          steering.div(total);
-          steering.normalize();
-          steering.mult(this.maxSpeed);
-          steering.sub(this.velocity);
-          steering.limit(this.maxForce);
-        }
-        
-        return steering;
-      }
-
-      seekTarget(): Vector {
-        if (!this.targetPosition) return new Vector(0, 0, 0);
-        
-        const desired = this.targetPosition.clone();
-        desired.sub(this.position);
-        
-        const d = desired.mag();
-        
-        // More aggressive arrival behavior for better letter formation
-        if (d < 10) {
-          // Very close - slow down dramatically
-          const m = (d / 10) * this.maxSpeed * 0.1;
-          desired.normalize();
-          desired.mult(m);
-        } else if (d < 50) {
-          // Getting close - start slowing
-          const m = (d / 50) * this.maxSpeed;
-          desired.normalize();
-          desired.mult(m);
-      } else {
-          // Far away - full speed
-          desired.normalize();
-          desired.mult(this.maxSpeed);
-        }
-        
-        desired.sub(this.velocity);
-        desired.limit(this.maxForce * 3); // Stronger force for better formation
-        
-        return desired;
-      }
-
-      edges(canvas: HTMLCanvasElement): void {
-        // Soft boundaries with depth wrapping
-        const margin = 50;
-
-        if (this.position.x < margin) {
-          this.acceleration.x += (margin - this.position.x) * 0.01;
-        } else if (this.position.x > canvas.width - margin) {
-          this.acceleration.x -= (this.position.x - (canvas.width - margin)) * 0.01;
-        }
-
-        if (this.position.y < margin) {
-          this.acceleration.y += (margin - this.position.y) * 0.01;
-        } else if (this.position.y > canvas.height - margin) {
-          this.acceleration.y -= (this.position.y - (canvas.height - margin)) * 0.01;
-        }
-
-        // Depth boundaries
-        if (this.position.z < -1) this.position.z = -1;
-        if (this.position.z > 1) this.position.z = 1;
-      }
-
-      flock(birds: Bird[], formationStrength: number): void {
-        const alignment = this.align(birds);
-        const cohesion = this.cohesion(birds);
-        const separation = this.separation(birds);
-        const target = this.seekTarget();
-        
-        // Dynamic weighting based on formation strength
-        if (formationStrength > 0.5) {
-          // Strong formation - prioritize target seeking
-          alignment.mult(0.2);
-          cohesion.mult(0.2);
-          separation.mult(0.6);
-          target.mult(6.0 * formationStrength); // Very strong for tiny birds
-        } else if (formationStrength > 0) {
-          // Transitioning
-          alignment.mult(0.8);
-          cohesion.mult(0.8);
-          separation.mult(1.5);
-          target.mult(2.0 * formationStrength);
-      } else {
-          // Pure murmuration - beautiful flocking behavior
-          alignment.mult(1.8);
-          cohesion.mult(2.0);
-          separation.mult(2.5);
-          
-          // Add slight random movement for organic feel
-          const randomForce = new Vector(
-            (Math.random() - 0.5) * 0.1,
-            (Math.random() - 0.5) * 0.1,
-            (Math.random() - 0.5) * 0.05
-          );
-          this.acceleration.add(randomForce);
-        }
-        
-        this.acceleration.add(alignment);
-        this.acceleration.add(cohesion);
-        this.acceleration.add(separation);
-        this.acceleration.add(target);
-      }
-
-      update(birds: Bird[]): void {
-        this.velocity.add(this.acceleration);
-        this.velocity.limit(this.maxSpeed);
-        this.position.add(this.velocity);
-        this.acceleration.mult(0);
-
-        // Update depth (map Z position to 0-1 range)
-        this.targetDepth = (this.position.z + 1) / 2;
-        this.depth += (this.targetDepth - this.depth) * 0.1; // Smooth transition
-
-        // Update wing animation
-        const speed = this.velocity.mag();
-        this.wingPhase += 0.15 * (1 + speed * 0.5);
-      }
-
-      draw(ctx: CanvasRenderingContext2D): void {
-        ctx.save();
-        ctx.translate(this.position.x, this.position.y);
-        
-        const angle = Math.atan2(this.velocity.y, this.velocity.x);
-        ctx.rotate(angle);
-        
-        const size = this.getApparentSize();
-        const alpha = this.getApparentAlpha();
-        
-        ctx.globalAlpha = alpha;
-        
-        // Simple V-shaped bird
-        const wingSpan = size;
-        const wingAngle = 0.3 + Math.sin(this.wingPhase) * 0.08; // Subtle wing movement
-        
-        // ALL BIRDS BLUE with depth variation
-        const depthBrightness = 0.7 + this.depth * 0.3;
-        ctx.strokeStyle = `rgba(${47 * depthBrightness}, ${127 * depthBrightness}, 255, ${alpha})`; // Blue for all
-        ctx.lineWidth = size * 0.25;
-        ctx.lineCap = 'round';
-        
-        // Draw simple V-shape
-        ctx.beginPath();
-        ctx.moveTo(-wingSpan, -wingSpan * wingAngle);
-        ctx.lineTo(0, 0);
-        ctx.lineTo(-wingSpan, wingSpan * wingAngle);
-        ctx.stroke();
-        
-        // Add subtle glow for closer birds
-        if (this.depth > 0.7) {
-          ctx.shadowColor = 'rgba(47, 127, 255, 0.4)';
-          ctx.shadowBlur = size * 0.2;
-          ctx.stroke();
-        }
-        
-        ctx.restore();
-      }
-    }
-    
-    const canvasWidth = canvas.width;
-    const canvasHeight = canvas.height;
-    
-    // Initialize three flocks of 100 birds each
-    const birds: Bird[] = [];
-    const birdsPerFlock = 100;
-    const numberOfFlocks = 3;
-    
-    // Letter formation positions (precise, uniform distribution)
-    const getLetterMPosition = (index: number, total: number): Vector => {
-      const centerX = canvasWidth * 0.2; // Left position for M
-      const centerY = canvasHeight * 0.5;
-      const letterHeight = 170;
-      const letterWidth = letterHeight * 0.9;
-      const strokeJitter = 2.0; // keep crisp but organic
-
-      // Key points
-      const xLeft = centerX - letterWidth / 2;
-      const xMid = centerX;
-      const xRight = centerX + letterWidth / 2;
-      const yTop = centerY - letterHeight / 2;
-      const yBottom = centerY + letterHeight / 2;
-
-      // Segment lengths (for proportional allocation)
-      const lenLeft = Math.abs(yBottom - yTop); // left vertical
-      const lenDiagL = Math.hypot(xMid - xLeft, yBottom - yTop); // top-left to bottom-center
-      const lenDiagR = Math.hypot(xRight - xMid, yBottom - yTop); // bottom-center to top-right
-      const lenRight = Math.abs(yBottom - yTop); // right vertical
-      const lengths = [lenLeft, lenDiagL, lenDiagR, lenRight];
-      const totalLen = lengths.reduce((a, b) => a + b, 0);
-
-      // Initial allocation via rounding; fix any rounding drift
-      let counts = lengths.map((l) => Math.max(1, Math.round((l / totalLen) * total)));
-      let allocated = counts.reduce((a, b) => a + b, 0);
-      while (allocated !== total) {
-        const delta = total - allocated;
-        // Adjust the largest segment to absorb the delta
-        const idx = counts.indexOf(Math.max(...counts));
-        counts[idx] += Math.sign(delta);
-        allocated = counts.reduce((a, b) => a + b, 0);
-      }
-
-      const [c0, c1, c2, c3] = counts;
-
-      let x = centerX;
-      let y = centerY;
-      let t = 0;
-
-      if (index < c0) {
-        // Left vertical (bottom -> top for nice fill)
-        t = index / Math.max(1, c0 - 1);
-        x = xLeft;
-        y = yBottom - t * (yBottom - yTop);
-      } else if (index < c0 + c1) {
-        // Left diagonal (top-left -> bottom-center)
-        const i = index - c0;
-        t = i / Math.max(1, c1 - 1);
-        x = xLeft + t * (xMid - xLeft);
-        y = yTop + t * (yBottom - yTop);
-      } else if (index < c0 + c1 + c2) {
-        // Right diagonal (bottom-center -> top-right)
-        const i = index - c0 - c1;
-        t = i / Math.max(1, c2 - 1);
-        x = xMid + t * (xRight - xMid);
-        y = yBottom - t * (yBottom - yTop);
-        } else {
-        // Right vertical (top -> bottom)
-        const i = index - c0 - c1 - c2;
-        t = i / Math.max(1, c3 - 1);
-        x = xRight;
-        y = yTop + t * (yBottom - yTop);
-      }
-
-      // Subtle thickness
-      x += (Math.random() - 0.5) * strokeJitter;
-      y += (Math.random() - 0.5) * strokeJitter;
-
-      return new Vector(x, y, 0);
-    };
-    
-    // Helper to compute G with precise C-arc + horizontal bar + right vertical
-    const getGPosition = (centerX: number, index: number, total: number): Vector => {
-      const centerY = canvasHeight * 0.5;
-      const radius = 90;
-      const jitter = 2.0;
-
-      // Geometry
-      // Open on the right: leave a gap around angle 0°
-      const startAngle = (Math.PI) / 6;      // +30°
-      const endAngle = (2 * Math.PI) - (Math.PI / 6); // 330°
-      const arcLength = radius * (endAngle - startAngle);
-
-      const barY = centerY; // middle bar
-      const barStartX = centerX - radius * 0.25; // from inner area of the C
-      const barEndX = centerX + radius * 0.65;   // extends out to the right
-      const barLength = Math.abs(barEndX - barStartX);
-
-      const vertX = barEndX; // vertical line at end of the bar
-      const vertTopY = barY;
-      const vertBottomY = barY + radius * 0.55;
-      const vertLength = Math.abs(vertBottomY - vertTopY);
-
-      // Proportional distribution
-      const lengths = [arcLength, barLength, vertLength];
-      const totalLen = lengths.reduce((a, b) => a + b, 0);
-      let counts = lengths.map((l) => Math.max(1, Math.round((l / totalLen) * total)));
-      let allocated = counts.reduce((a, b) => a + b, 0);
-      while (allocated !== total) {
-        const delta = total - allocated;
-        const idx = counts.indexOf(Math.max(...counts));
-        counts[idx] += Math.sign(delta);
-        allocated = counts.reduce((a, b) => a + b, 0);
-      }
-      const [cArc, cBar, cVert] = counts;
-
-      let x = centerX;
-      let y = centerY;
-
-      if (index < cArc) {
-        const t = index / Math.max(1, cArc - 1);
-        const angle = startAngle + t * (endAngle - startAngle);
-        x = centerX + Math.cos(angle) * radius;
-        y = centerY + Math.sin(angle) * radius;
-      } else if (index < cArc + cBar) {
-        const i = index - cArc;
-        const t = i / Math.max(1, cBar - 1);
-        x = barStartX + t * (barEndX - barStartX);
-        y = barY;
-        } else {
-        const i = index - cArc - cBar;
-        const t = i / Math.max(1, cVert - 1);
-        x = vertX;
-        y = vertTopY + t * (vertBottomY - vertTopY);
-      }
-
-      x += (Math.random() - 0.5) * jitter;
-      y += (Math.random() - 0.5) * jitter;
-      return new Vector(x, y, 0);
-    };
-
-    const getLetterG1Position = (index: number, total: number): Vector => {
-      const cx = canvasWidth * 0.5;
-      return getGPosition(cx, index, total);
-    };
-    
-    const getLetterG2Position = (index: number, total: number): Vector => {
-      const cx = canvasWidth * 0.8;
-      return getGPosition(cx, index, total);
-    };
-    
-    // Initialize birds in 3 flocks
-    const init = () => {
-      birds.length = 0;
-      
-      // Create three flocks, each starting in different areas
-      for (let flockId = 0; flockId < numberOfFlocks; flockId++) {
-        const flockCenterX = canvasWidth * (0.25 + flockId * 0.25);
-        const flockCenterY = canvasHeight * 0.5;
-        
-        for (let i = 0; i < birdsPerFlock; i++) {
-          const angle = (i / birdsPerFlock) * Math.PI * 2;
-          const radius = 50 + Math.random() * 100;
-          const x = flockCenterX + Math.cos(angle) * radius;
-          const y = flockCenterY + Math.sin(angle) * radius;
-          const z = (Math.random() - 0.5); // Smaller depth range
-          
-          birds.push(new Bird(x, y, z, flockId));
-        }
-      }
-    };
-
-    // Phase management with three letters
-    // Tunable timings (60fps):
-    // Total cycle between letter starts = MURMURATION + FORMING + HOLDING + DISPERSING
-    // 240 + 90 + 90 + 60 = 480 frames ≈ 8 seconds
-    const MURMURATION_FRAMES = 240; // ~4s of free flight to achieve 7-8s cycle
-    const FORMING_FRAMES = 90;      // ~1.5s to converge
-    const HOLDING_FRAMES = 90;      // ~1.5s to display clearly
-    const DISPERSING_FRAMES = 60;   // ~1s to release back to murmuration
-
-    let currentPhase: 'murmuration' | 'forming' | 'holding' | 'dispersing' = 'murmuration';
-    let phaseTimer = 0;
-    let formationStrength = 0;
-    
-    const updatePhase = (time: number) => {
-      phaseTimer++;
-      
-      switch(currentPhase) {
-        case 'murmuration':
-          // Free flight period before re-forming letters
-          if (phaseTimer > MURMURATION_FRAMES) {
-            currentPhase = 'forming';
-            phaseTimer = 0;
-            
-            // Assign each flock to form their respective letter
-            birds.forEach((bird) => {
-              if (bird.flockId === 0) {
-                // Flock 0 forms M
-                bird.letterType = 'M';
-                const flockBirds = birds.filter(b => b.flockId === 0);
-                const birdIndex = flockBirds.indexOf(bird);
-                bird.targetPosition = getLetterMPosition(birdIndex, flockBirds.length);
-              } else if (bird.flockId === 1) {
-                // Flock 1 forms first G
-                bird.letterType = 'G1';
-                const flockBirds = birds.filter(b => b.flockId === 1);
-                const birdIndex = flockBirds.indexOf(bird);
-                bird.targetPosition = getLetterG1Position(birdIndex, flockBirds.length);
-              } else if (bird.flockId === 2) {
-                // Flock 2 forms second G
-                bird.letterType = 'G2';
-                const flockBirds = birds.filter(b => b.flockId === 2);
-                const birdIndex = flockBirds.indexOf(bird);
-                bird.targetPosition = getLetterG2Position(birdIndex, flockBirds.length);
-              }
-            });
-          }
-          formationStrength = Math.max(0, formationStrength - 0.02);
-          break;
-          
-        case 'forming':
-          formationStrength = Math.min(1, formationStrength + 0.03); // Slightly faster pull-in
-          if (phaseTimer > FORMING_FRAMES) { // ~1.5s to form
-            currentPhase = 'holding';
-            phaseTimer = 0;
-          }
-          break;
-          
-        case 'holding':
-          if (phaseTimer > HOLDING_FRAMES) { // Clear display window (~1.5s)
-            currentPhase = 'dispersing';
-            phaseTimer = 0;
-          }
-          break;
-          
-        case 'dispersing':
-          formationStrength = Math.max(0, formationStrength - 0.03);
-          if (phaseTimer > DISPERSING_FRAMES) { // ~1s to disperse
-            currentPhase = 'murmuration';
-            phaseTimer = 0;
-            birds.forEach(bird => {
-              bird.targetPosition = null;
-              bird.letterType = null;
-            });
-          }
-          break;
-      }
-    };
-
-    let time = 0;
-    
-    // Animation loop with depth-based rendering
-    const animate = () => {
-      // Semi-transparent background for trails
-      ctx.fillStyle = 'rgba(11, 21, 38, 0.06)'; // Lighter fade for tiny birds
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      
-      time++;
-      
-      // Start with showing letters immediately for 1 second, then go to murmuration
-      if (time === 1) {
-        // Form letters immediately at start
-        currentPhase = 'forming';
-        phaseTimer = 0;
-        
-        birds.forEach((bird) => {
-          if (bird.flockId === 0) {
-            bird.letterType = 'M';
-            const flockBirds = birds.filter(b => b.flockId === 0);
-            const birdIndex = flockBirds.indexOf(bird);
-            bird.targetPosition = getLetterMPosition(birdIndex, flockBirds.length);
-          } else if (bird.flockId === 1) {
-            bird.letterType = 'G1';
-            const flockBirds = birds.filter(b => b.flockId === 1);
-            const birdIndex = flockBirds.indexOf(bird);
-            bird.targetPosition = getLetterG1Position(birdIndex, flockBirds.length);
-          } else if (bird.flockId === 2) {
-            bird.letterType = 'G2';
-            const flockBirds = birds.filter(b => b.flockId === 2);
-            const birdIndex = flockBirds.indexOf(bird);
-            bird.targetPosition = getLetterG2Position(birdIndex, flockBirds.length);
-          }
-        });
-      }
-      
-      updatePhase(time);
-      
-      // Sort birds by depth (far to near) for proper rendering order
-      birds.sort((a, b) => a.depth - b.depth);
-      
-      // Update and draw birds
-      birds.forEach(bird => {
-        bird.edges(canvas);
-        bird.flock(birds, formationStrength);
-        bird.update(birds);
-        bird.draw(ctx);
-      });
-      
-      requestAnimationFrame(animate);
-    };
-
-    init();
-    animate();
-
-    return () => {
-      window.removeEventListener('resize', resizeCanvas);
-    };
-  }, []);
-
-    return (
-    <canvas
-      ref={canvasRef}
-      style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        width: '100%',
-        height: '100%',
-        zIndex: 1,
-        pointerEvents: 'none'
-      }}
-    />
-  );
-};
+// NOTE: The flock animation is now a dedicated component used only inside the hero section (HomePage)
+// Any global instance here would overlap sections, so the implementation was moved to components/FlockAnimation.tsx
+const FlockAnimation = () => null;
 
 // LinkedIn Icon Component
 const LinkedInIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
@@ -847,7 +159,28 @@ const PlexusBackground: React.FC = () => {
 };
 
 // Enhanced FloatingElements Component with Better Visibility
-const FloatingElements: React.FC = () => (
+const FloatingElements: React.FC = () => {
+  const [isLightMode, setIsLightMode] = useState(false);
+  
+  useEffect(() => {
+    const updateTheme = () => {
+      setIsLightMode(document.documentElement.getAttribute('data-theme') === 'light');
+    };
+    
+    // Initial check
+    updateTheme();
+    
+    // Listen for theme changes
+    const observer = new MutationObserver(updateTheme);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme']
+    });
+    
+    return () => observer.disconnect();
+  }, []);
+
+  return (
   <div style={{
     position: 'fixed',
     inset: 0,
@@ -855,7 +188,7 @@ const FloatingElements: React.FC = () => (
     overflow: 'hidden',
     zIndex: 0
   }}>
-    {/* Large floating orbs with enhanced visibility */}
+      {/* Large floating orbs with theme-aware visibility */}
     <div
       className="floating-orb-1"
       style={{
@@ -864,10 +197,12 @@ const FloatingElements: React.FC = () => (
         left: '8%',
         width: '300px',
         height: '300px',
-        background: 'radial-gradient(circle, rgba(47,107,255,0.08) 0%, rgba(0,195,137,0.06) 50%, transparent 100%)',
+          background: isLightMode 
+            ? 'radial-gradient(circle, rgba(47,107,255,0.06) 0%, rgba(0,195,137,0.04) 50%, transparent 100%)'
+            : 'radial-gradient(circle, rgba(47,107,255,0.08) 0%, rgba(0,195,137,0.06) 50%, transparent 100%)',
         borderRadius: '50%',
         filter: 'blur(60px)',
-        opacity: 0.8
+          opacity: isLightMode ? 0.6 : 0.8
       }}
     />
     <div
@@ -878,10 +213,12 @@ const FloatingElements: React.FC = () => (
         right: '10%',
         width: '400px',
         height: '400px',
-        background: 'radial-gradient(circle, rgba(0,195,137,0.08) 0%, rgba(47,107,255,0.06) 50%, transparent 100%)',
+          background: isLightMode
+            ? 'radial-gradient(circle, rgba(0,195,137,0.06) 0%, rgba(47,107,255,0.04) 50%, transparent 100%)'
+            : 'radial-gradient(circle, rgba(0,195,137,0.08) 0%, rgba(47,107,255,0.06) 50%, transparent 100%)',
         borderRadius: '50%',
         filter: 'blur(80px)',
-        opacity: 0.7
+          opacity: isLightMode ? 0.5 : 0.7
       }}
     />
     <div
@@ -892,10 +229,12 @@ const FloatingElements: React.FC = () => (
         left: '25%',
         width: '250px',
         height: '250px',
-        background: 'radial-gradient(circle, rgba(255,176,32,0.06) 0%, rgba(47,107,255,0.08) 50%, transparent 100%)',
+          background: isLightMode
+            ? 'radial-gradient(circle, rgba(255,176,32,0.04) 0%, rgba(47,107,255,0.06) 50%, transparent 100%)'
+            : 'radial-gradient(circle, rgba(255,176,32,0.06) 0%, rgba(47,107,255,0.08) 50%, transparent 100%)',
         borderRadius: '50%',
         filter: 'blur(50px)',
-        opacity: 0.9
+          opacity: isLightMode ? 0.7 : 0.9
       }}
     />
 
@@ -908,9 +247,11 @@ const FloatingElements: React.FC = () => (
         right: '20%',
         width: '12px',
         height: '12px',
-        background: 'rgba(47,107,255,0.8)',
+          background: isLightMode ? 'rgba(47,107,255,0.6)' : 'rgba(47,107,255,0.8)',
         borderRadius: '50%',
-        boxShadow: '0 0 20px rgba(47,107,255,0.6), 0 0 40px rgba(47,107,255,0.4)'
+          boxShadow: isLightMode 
+            ? '0 0 15px rgba(47,107,255,0.4), 0 0 30px rgba(47,107,255,0.2)'
+            : '0 0 20px rgba(47,107,255,0.6), 0 0 40px rgba(47,107,255,0.4)'
       }}
     />
     <div
@@ -921,9 +262,11 @@ const FloatingElements: React.FC = () => (
         left: '18%',
         width: '8px',
         height: '8px',
-        background: 'rgba(0,195,137,0.9)',
+          background: isLightMode ? 'rgba(0,195,137,0.7)' : 'rgba(0,195,137,0.9)',
         borderRadius: '50%',
-        boxShadow: '0 0 15px rgba(0,195,137,0.7), 0 0 30px rgba(0,195,137,0.5)'
+          boxShadow: isLightMode
+            ? '0 0 12px rgba(0,195,137,0.5), 0 0 25px rgba(0,195,137,0.3)'
+            : '0 0 15px rgba(0,195,137,0.7), 0 0 30px rgba(0,195,137,0.5)'
       }}
     />
     <div
@@ -934,9 +277,11 @@ const FloatingElements: React.FC = () => (
         right: '30%',
         width: '10px',
         height: '10px',
-        background: 'rgba(255,176,32,0.8)',
+          background: isLightMode ? 'rgba(255,176,32,0.6)' : 'rgba(255,176,32,0.8)',
         borderRadius: '50%',
-        boxShadow: '0 0 18px rgba(255,176,32,0.6), 0 0 35px rgba(255,176,32,0.4)'
+          boxShadow: isLightMode
+            ? '0 0 15px rgba(255,176,32,0.4), 0 0 30px rgba(255,176,32,0.2)'
+            : '0 0 18px rgba(255,176,32,0.6), 0 0 35px rgba(255,176,32,0.4)'
       }}
     />
 
@@ -949,9 +294,9 @@ const FloatingElements: React.FC = () => (
         left: '70%',
         width: '6px',
         height: '6px',
-        background: 'rgba(47,107,255,0.6)',
+          background: isLightMode ? 'rgba(47,107,255,0.4)' : 'rgba(47,107,255,0.6)',
         borderRadius: '50%',
-        boxShadow: '0 0 12px rgba(47,107,255,0.4)'
+          boxShadow: isLightMode ? '0 0 8px rgba(47,107,255,0.3)' : '0 0 12px rgba(47,107,255,0.4)'
       }}
     />
     <div
@@ -962,13 +307,14 @@ const FloatingElements: React.FC = () => (
         left: '60%',
         width: '4px',
         height: '4px',
-        background: 'rgba(0,195,137,0.7)',
+          background: isLightMode ? 'rgba(0,195,137,0.5)' : 'rgba(0,195,137,0.7)',
         borderRadius: '50%',
-        boxShadow: '0 0 10px rgba(0,195,137,0.5)'
+          boxShadow: isLightMode ? '0 0 8px rgba(0,195,137,0.4)' : '0 0 10px rgba(0,195,137,0.5)'
       }}
     />
         </div>
 );
+};
 
 // SectionTransition Component
 const SectionTransition: React.FC<{
@@ -1201,539 +547,286 @@ const LeadershipCard: React.FC<{ member: typeof leadership[0]; index: number }> 
     );
 };
 
-function App() {
-  // Enhanced scroll animations with intersection observer
+// Use isolated TeamSphere component instead of inline version
+import TeamSphere from './components/TeamSphere';
+
+const ScrollIndicator: React.FC<{ href: string; label: string }> = ({ href, label }) => (
+  <a href={href} className="scroll-animate" style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 6, marginTop: 36, color: 'var(--ink-muted)', textDecoration: 'none' }}>
+    <span style={{ fontSize: 14 }}>{label}</span>
+    <span style={{ fontSize: 22 }}>↓</span>
+  </a>
+);
+
+const AnimatedNumber: React.FC<{ target: number; duration?: number; formatter?: (n: number) => string }> = ({ target, duration = 1400, formatter }) => {
+  const spanRef = useRef<HTMLSpanElement>(null);
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('is-visible');
-            observer.unobserve(entry.target);
-          }
-        });
-      },
-      { threshold: 0.1, rootMargin: '50px' }
-    );
+    let start: number | null = null;
+    const step = (ts: number) => {
+      if (start === null) start = ts;
+      const p = Math.min(1, (ts - start) / duration);
+      const value = target * p;
+      const out = formatter ? formatter(value) : Math.round(value).toString();
+      if (spanRef.current) spanRef.current.textContent = out;
+      if (p < 1) requestAnimationFrame(step);
+    };
+    const r = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(r);
+  }, [target, duration, formatter]);
+  return <span ref={spanRef}>0</span>;
+};
 
-    const elements = document.querySelectorAll('.scroll-animate');
-    elements.forEach(el => observer.observe(el));
+const CredibilityStats: React.FC = () => (
+  <section style={{ padding: '80px 0', background: 'var(--bg-1)', borderTop: '1px solid var(--stroke)', borderBottom: '1px solid var(--stroke)', position: 'relative', overflow: 'hidden' }}>
+    {/* Subtle world grid lines */}
+    <svg aria-hidden="true" style={{ position: 'absolute', inset: 0, opacity: 0.08, pointerEvents: 'none' }} viewBox="0 0 1200 600" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="grid" x1="0" x2="1">
+          <stop offset="0%" stopColor="#2F6BFF" />
+          <stop offset="100%" stopColor="#00C389" />
+        </linearGradient>
+      </defs>
+      {Array.from({ length: 18 }).map((_, i) => (
+        <line key={`v-${i}`} x1={(i+1)*60} y1="0" x2={(i+1)*60} y2="600" stroke="url(#grid)" strokeWidth="0.5" />
+      ))}
+      {Array.from({ length: 9 }).map((_, i) => (
+        <line key={`h-${i}`} x1="0" y1={(i+1)*60+60} x2="1200" y2={(i+1)*60+60} stroke="url(#grid)" strokeWidth="0.5" />
+      ))}
+    </svg>
+    <div className="container" style={{ position: 'relative' }}>
+      <div className="scroll-animate" style={{ textAlign: 'left', marginBottom: 24 }}>
+        <h2 style={{ fontFamily: 'Newsreader, serif', fontSize: 'clamp(28px, 3.5vw, 44px)', fontWeight: 700, color: 'var(--ink)' }}>Credibility</h2>
+          </div>
+      <div className="scroll-animate" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 24 }}>
+        <div className="card card-hover" style={{ padding: 24, textAlign: 'center' }}>
+          <div style={{ fontSize: 40, color: 'var(--accent-1)', marginBottom: 8 }}>📈</div>
+          <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--ink)' }}>
+            $<AnimatedNumber target={1000000000} formatter={(v) => `${(v/1e9).toFixed(1)}B+`} />
+        </div>
+          <div style={{ color: 'var(--ink-muted)' }}>Cumulative product revenue</div>
+          </div>
+        <div className="card card-hover" style={{ padding: 24, textAlign: 'center' }}>
+          <div style={{ fontSize: 40, color: 'var(--accent-1)', marginBottom: 8 }}>👥</div>
+          <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--ink)' }}>
+            <AnimatedNumber target={20000000} formatter={(v) => `${(v/1e6).toFixed(1)}M+`} />
+        </div>
+          <div style={{ color: 'var(--ink-muted)' }}>Users</div>
+          </div>
+        <div className="card card-hover" style={{ padding: 24, textAlign: 'center' }}>
+          <div style={{ fontSize: 40, color: 'var(--accent-1)', marginBottom: 8 }}>🌍</div>
+          <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--ink)' }}>
+            <AnimatedNumber target={20} formatter={(v) => `${Math.round(v)}+`} /> countries
+                </div>
+          <div style={{ color: 'var(--ink-muted)' }}>Project reach</div>
+              </div>
+          </div>
+        </div>
+      </section>
+);
 
-    return () => observer.disconnect();
+const StudioCTA: React.FC = () => (
+  <section style={{ padding: '80px 0', background: 'var(--bg-2)' }}>
+        <div className="container">
+      <div className="scroll-animate" style={{ textAlign: 'left', marginBottom: 24 }}>
+        <h2 style={{ fontFamily: 'Newsreader, serif', fontSize: 'clamp(28px, 3.5vw, 44px)', fontWeight: 700, color: 'var(--ink)' }}>Join us right now</h2>
+          </div>
+      <div className="scroll-animate" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 24 }}>
+        {[
+          { n: '1', text: '$1.5M — closing the Sigen AI round this fall.' },
+          { n: '2', text: 'Smart Block Homes — opening a test round this fall.' },
+          { n: '3', text: '10+ active AI projects in portfolio.' }
+        ].map((c) => (
+          <div key={c.n} className="card" style={{ padding: 24, background: 'rgba(47,107,255,0.08)' }}>
+            <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--accent-2)', marginBottom: 10 }}>{c.n}</div>
+            <div style={{ color: 'var(--ink)' }}>{c.text}</div>
+          </div>
+            ))}
+          </div>
+      <div className="scroll-animate" style={{ display: 'flex', gap: 16, marginTop: 28 }}>
+        <a href="#contact" className="btn btn-primary" style={{ padding: '12px 22px' }}>Join Us</a>
+        <a href="#projects" className="btn" style={{ padding: '12px 22px', border: '1px solid var(--stroke)', color: 'var(--ink)' }}>Explore Portfolio</a>
+          </div>
+        </div>
+      </section>
+);
+
+const ConsultingSection: React.FC = () => (
+  <section id="consulting" style={{ padding: '120px 0', background: 'var(--bg-1)' }}>
+    <div className="container">
+      <div className="scroll-animate" style={{ textAlign: 'center', marginBottom: 40 }}>
+        <h2 style={{ fontFamily: 'Newsreader, serif', fontSize: 'clamp(32px, 4vw, 48px)', fontWeight: 700, color: 'var(--ink)' }}>Consulting</h2>
+        <p style={{ color: 'var(--ink-muted)', fontSize: 20, maxWidth: 900, margin: '12px auto 0' }}>
+          AI-Powered Strategy for Complex Environments. Delivering mission-critical results for governments and industries through advanced AI solutions, precision data analytics, and rapid execution.
+        </p>
+      </div>
+      <div className="scroll-animate" style={{ maxWidth: 1000, margin: '0 auto' }}>
+        <h3 style={{ fontSize: 22, fontWeight: 700, color: 'var(--ink)', marginBottom: 12 }}>Success Stories</h3>
+        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: 14 }}>
+          {[
+            'Digital Transformation of the City of Burnaby — modernizing municipal operations with AI-driven automation, integrated databases, and advanced data intelligence.',
+            'AI-Enabled Transportation for the City of Ottawa — deploying predictive analytics to optimize mobility, enhance safety, and manage traffic flow in real time.',
+            'AI-Powered Reconstruction for the Ministry of Infrastructure of Ukraine — applying AI analytics to accelerate national infrastructure recovery.',
+            'Many other high-impact initiatives — spanning public safety, infrastructure resilience, and enterprise AI transformation.'
+          ].map((t, i) => (
+            <li key={i} className="card" style={{ padding: 18, borderLeft: '4px solid var(--accent-2)', background: 'var(--bg-2)' }}>{t}</li>
+          ))}
+        </ul>
+          </div>
+        </div>
+      </section>
+);
+
+const CommunitySection: React.FC = () => (
+  <section id="community" style={{ padding: '120px 0', background: 'var(--bg-2)' }}>
+        <div className="container">
+      <div className="scroll-animate" style={{ textAlign: 'center', marginBottom: 40 }}>
+        <h2 style={{ fontFamily: 'Newsreader, serif', fontSize: 'clamp(32px, 4vw, 48px)', fontWeight: 700, color: 'var(--ink)' }}>Community</h2>
+        <p style={{ color: 'var(--ink-muted)', fontSize: 20, maxWidth: 900, margin: '12px auto 0' }}>
+          Community of AI Excellence. A high-calibre network of top AI founders, elite scientists, and prominent mentors across the U.S. and Canada.
+            </p>
+          </div>
+      <div className="scroll-animate" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 24 }}>
+        <div className="card" style={{ padding: 24 }}>
+          <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8, color: 'var(--ink)' }}>BRAIVE</h3>
+          <p style={{ color: 'var(--ink-muted)' }}>BRAIVE is MGG’s unique community bringing together leading developers in AI and computer vision from the U.S., Canada, the U.K., and beyond — united by a shared focus on cutting-edge innovation in visual intelligence.</p>
+                  </div>
+        <div className="card" style={{ padding: 24 }}>
+          <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8, color: 'var(--ink)' }}>Web Summit Vancouver 2025</h3>
+          <p style={{ color: 'var(--ink-muted)' }}>Our team is part of Web Summit Vancouver 2025, a gathering of the brightest minds in technology, business, and policy.</p>
+              </div>
+        <div className="card" style={{ padding: 24 }}>
+          <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8, color: 'var(--ink)' }}>Techstars</h3>
+          <p style={{ color: 'var(--ink-muted)' }}>We are proud alumni of Techstars, one of the world’s most prestigious accelerator programs, enabling us to scale faster and execute bold AI projects.</p>
+            </div>
+        <div className="card" style={{ padding: 24 }}>
+          <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8, color: 'var(--ink)' }}>SXSW</h3>
+          <p style={{ color: 'var(--ink-muted)' }}>Our team represented Canada at the South by Southwest (SXSW) Conference in Austin — a leading platform for emerging technology.</p>
+                  </div>
+        <div className="card" style={{ padding: 24 }}>
+          <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8, color: 'var(--ink)' }}>Creative Destruction Lab (CDL)</h3>
+          <p style={{ color: 'var(--ink-muted)' }}>As alumni of the Creative Destruction Lab, we collaborated with world-class experts to refine ventures and push AI innovation toward measurable real‑world impact.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+);
+
+// Main layout component with theme management and header
+const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Theme state management
+  const [isDarkMode, setIsDarkMode] = useState(true);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  // Close mobile menu on resize to desktop
+  useEffect(() => {
+    const onResize = () => {
+      if (window.innerWidth > 900) setIsMenuOpen(false);
+    };
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
   }, []);
+
+  // Initialize theme from localStorage or default to dark
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const shouldUseDark = savedTheme ? savedTheme === 'dark' : prefersDark;
+    
+    setIsDarkMode(shouldUseDark);
+    document.documentElement.setAttribute('data-theme', shouldUseDark ? 'dark' : 'light');
+  }, []);
+
+  // Toggle theme function
+  const toggleTheme = () => {
+    const newTheme = !isDarkMode;
+    setIsDarkMode(newTheme);
+    const themeValue = newTheme ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', themeValue);
+    localStorage.setItem('theme', themeValue);
+  };
+
+  // Use shared ScrollReveal hook instead of inline observer
+  useScrollReveal();
 
   return (
     <div style={{ background: 'var(--bg-1)', minHeight: '100vh', color: 'var(--ink)', position: 'relative' }}>
       <style>{`
-        /* Enhanced animations */
-        .scroll-animate {
-          opacity: 0;
-          transform: translateY(40px);
-          transition: all 1s cubic-bezier(0.23, 1, 0.32, 1);
-        }
-
-        .scroll-animate.is-visible {
-          opacity: 1;
-          transform: translateY(0);
-        }
-
-        /* Enhanced floating animations with better visibility */
-        @keyframes float-slow {
-          0%, 100% { transform: translateY(0px) translateX(0px) rotate(0deg); }
-          25% { transform: translateY(-25px) translateX(20px) rotate(3deg); }
-          50% { transform: translateY(-15px) translateX(-12px) rotate(-2deg); }
-          75% { transform: translateY(-35px) translateX(15px) rotate(2deg); }
-        }
-
-        @keyframes float-medium {
-          0%, 100% { transform: translateY(0px) translateX(0px) scale(1); }
-          25% { transform: translateY(-20px) translateX(-18px) scale(1.15); }
-          50% { transform: translateY(-40px) translateX(25px) scale(0.85); }
-          75% { transform: translateY(-12px) translateX(-8px) scale(1.1); }
-        }
-
-        @keyframes float-fast {
-          0%, 100% { transform: translateY(0px) translateX(0px) scale(1); }
-          33% { transform: translateY(-18px) translateX(12px) scale(1.2); }
-          66% { transform: translateY(-30px) translateX(-15px) scale(0.8); }
-        }
-
-        @keyframes pulse-glow {
-          0%, 100% { opacity: 0.4; transform: scale(1); }
-          50% { opacity: 1; transform: scale(1.5); }
-        }
-
-        @keyframes particle-dance {
-          0%, 100% { transform: translateY(0px) translateX(0px) scale(1) rotate(0deg); }
-          25% { transform: translateY(-15px) translateX(10px) scale(1.3) rotate(90deg); }
-          50% { transform: translateY(-25px) translateX(-8px) scale(0.8) rotate(180deg); }
-          75% { transform: translateY(-10px) translateX(12px) scale(1.1) rotate(270deg); }
-        }
-
-        /* Apply enhanced floating animations */
-        .floating-orb-1 { animation: float-slow 18s ease-in-out infinite; }
-        .floating-orb-2 { animation: float-medium 14s ease-in-out infinite; }
-        .floating-orb-3 { animation: float-fast 10s ease-in-out infinite; }
-
-        .floating-dot-1 { animation: pulse-glow 3s ease-in-out infinite, particle-dance 8s ease-in-out infinite; }
-        .floating-dot-2 { animation: pulse-glow 4s ease-in-out infinite 1s, particle-dance 6s ease-in-out infinite 2s; }
-        .floating-dot-3 { animation: pulse-glow 2.5s ease-in-out infinite 0.5s, particle-dance 7s ease-in-out infinite 1s; }
-
-        .floating-particle-large { animation: particle-dance 9s ease-in-out infinite, pulse-glow 3.5s ease-in-out infinite; }
-        .floating-particle-medium { animation: particle-dance 7s ease-in-out infinite 1.5s, pulse-glow 4s ease-in-out infinite 0.8s; }
-
-        .floating-particle-1 { animation: float-fast 6s ease-in-out infinite, pulse-glow 2.8s ease-in-out infinite; }
-        .floating-particle-2 { animation: float-medium 8s ease-in-out infinite 2s, pulse-glow 3.2s ease-in-out infinite 1.2s; }
-
-        .transition-dot-0 { animation: pulse-glow 2s ease-in-out infinite; }
-        .transition-dot-1 { animation: pulse-glow 2s ease-in-out infinite 0.3s; }
-        .transition-dot-2 { animation: pulse-glow 2s ease-in-out infinite 0.6s; }
-        .transition-dot-3 { animation: pulse-glow 2s ease-in-out infinite 0.9s; }
-        .transition-dot-4 { animation: pulse-glow 2s ease-in-out infinite 1.2s; }
-
-        /* Team card enhancements */
-        .team-card:hover {
-          border-color: var(--accent-1);
-        }
-
-        .team-card:hover img {
-          border-color: var(--accent-2);
-          box-shadow: 0 0 20px rgba(47, 107, 255, 0.4);
-        }
-
-        /* Header hover effects */
-        nav a:hover {
-          color: var(--accent-1) !important;
-          transform: translateY(-2px);
-        }
-
-        /* Button enhancements */
-        .btn:hover {
-          transform: translateY(-3px) scale(1.05);
-          box-shadow: 0 10px 25px rgba(47, 107, 255, 0.3);
-        }
-
-        /* Reduced motion support */
-        @media (prefers-reduced-motion: reduce) {
-          * {
-            animation-duration: 0.01ms !important;
-            animation-iteration-count: 1 !important;
-            transition-duration: 0.01ms !important;
-          }
-        }
+        .card-hover { transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease; }
+        .card-hover:hover { transform: translateY(-3px); border-color: rgba(47,107,255,0.6); box-shadow: 0 16px 40px rgba(0,0,0,0.25); }
+        .btn:hover { transform: translateY(-3px) scale(1.05); box-shadow: 0 10px 25px rgba(47, 107, 255, 0.3); }
+        nav a:hover { color: var(--accent-1) !important; transform: translateY(-2px); }
       `}</style>
-
-      {/* Global floating elements - NOW VISIBLE */}
-      <FloatingElements />
 
       {/* Header */}
       <header style={{
         position: 'sticky',
         top: 0,
-        background: 'rgba(11, 21, 38, 0.95)',
+        background: isDarkMode ? 'rgba(11, 21, 38, 0.95)' : 'rgba(248, 250, 252, 0.95)',
         backdropFilter: 'blur(20px)',
         borderBottom: '1px solid var(--stroke)',
-        zIndex: 100
+        zIndex: 100,
+        transition: 'background-color 0.3s ease'
       }}>
-        <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px' }}>
-          <div style={{ fontFamily: 'Newsreader, serif', fontSize: '22px', fontWeight: 600, color: 'var(--ink)' }}>
+        <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px' }}>
+          <Link to="/" style={{ fontFamily: 'Newsreader, serif', fontSize: '22px', fontWeight: 600, color: 'var(--ink)', textDecoration: 'none' }}>
             MyGlobal Group
-          </div>
-          <nav style={{ display: 'flex', gap: '40px' }}>
-            <a href="#services" style={{ color: 'var(--ink)', textDecoration: 'none', transition: 'all 0.3s cubic-bezier(0.23, 1, 0.32, 1)', position: 'relative' }}>Services</a>
-            <a href="#projects" style={{ color: 'var(--ink)', textDecoration: 'none', transition: 'all 0.3s cubic-bezier(0.23, 1, 0.32, 1)', position: 'relative' }}>Projects</a>
-            <a href="#team" style={{ color: 'var(--ink)', textDecoration: 'none', transition: 'all 0.3s cubic-bezier(0.23, 1, 0.32, 1)', position: 'relative' }}>Team</a>
-            <a href="#contact" style={{ color: 'var(--ink)', textDecoration: 'none', transition: 'all 0.3s cubic-bezier(0.23, 1, 0.32, 1)', position: 'relative' }}>Contact</a>
-          </nav>
-        </div>
-      </header>
-
-      {/* Hero Section with Flock Animation */}
-      <section style={{
-        background: `
-          radial-gradient(1200px at 20% 10%, rgba(47,107,255,0.15), transparent 60%),
-          linear-gradient(180deg, #0C1729 0%, #0A1322 100%)
-        `,
-        minHeight: '100vh',
+          </Link>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            {/* Desktop nav */}
+            <nav className="desktop-nav" style={{ display: 'flex', gap: '32px' }}>
+              <Link to="/projects" style={{ color: 'var(--ink)', textDecoration: 'none' }}>Projects</Link>
+              <Link to="/consulting" style={{ color: 'var(--ink)', textDecoration: 'none' }}>Consulting</Link>
+              <Link to="/team" style={{ color: 'var(--ink)', textDecoration: 'none' }}>Team</Link>
+              <Link to="/community" style={{ color: 'var(--ink)', textDecoration: 'none' }}>Community</Link>
+              <a href="/#contact" style={{ color: 'var(--ink)', textDecoration: 'none' }}>Contact</a>
+            </nav>
+            {/* Mobile menu button */}
+            <button onClick={() => setIsMenuOpen(v => !v)} className="btn mobile-menu-btn" style={{ display: 'none', alignItems: 'center', justifyContent: 'center', width: 40, height: 40, border: '1px solid var(--stroke)', background: 'transparent', color: 'var(--ink)' }} aria-label="Toggle menu">☰</button>
+            {/* Theme Toggle Button */}
+            <button
+              onClick={toggleTheme}
+                style={{ 
+                background: 'none',
+                border: '2px solid var(--stroke)',
+                borderRadius: '50%',
+                width: '44px',
+                height: '44px',
         display: 'flex',
         alignItems: 'center',
-        position: 'relative',
-        overflow: 'hidden'
-      }}>
-        {/* Flock of Birds Animation - Behind Text */}
-        <FlockAnimation />
-
-        <div className="container scroll-animate" style={{ textAlign: 'center', zIndex: 10, position: 'relative' }}>
-          <h1 style={{
-            fontFamily: 'Newsreader, serif',
-            fontSize: 'clamp(42px, 6vw, 76px)',
-            fontWeight: 700,
-            lineHeight: 1.1,
-            marginBottom: '32px',
-            color: 'var(--ink)',
-            letterSpacing: '-0.02em',
-            position: 'relative',
-            zIndex: 10
-          }}>
-            Dual-Use Strategy and AI Execution for Complex Environments.
-          </h1>
-          <p className="scroll-animate" style={{
-            fontSize: 'clamp(19px, 2.5vw, 26px)',
-            color: 'var(--ink-muted)',
-            marginBottom: '56px',
-            maxWidth: '650px',
-            margin: '0 auto 56px',
-            transitionDelay: '300ms',
-            lineHeight: 1.5,
-            position: 'relative',
-            zIndex: 10
-          }}>
-            Strategic consulting services bridging defense innovation and civilian applications through AI-powered solutions and battlefield-validated technologies.
-          </p>
-          <div className="scroll-animate" style={{ display: 'flex', gap: '32px', justifyContent: 'center', flexWrap: 'wrap', transitionDelay: '600ms', position: 'relative', zIndex: 10 }}>
-            <a href="#contact" className="btn btn-primary" style={{ fontSize: '18px', padding: '16px 32px' }}>Contact Us</a>
-          </div>
-        </div>
-      </section>
-
-      {/* Section Transition */}
-      <SectionTransition variant="wave" color="blue" />
-
-      {/* Who we are Section */}
-      <section id="services" style={{ padding: '140px 0', background: 'var(--bg-1)', position: 'relative' }}>
-        <div className="container">
-          <div className="scroll-animate" style={{ textAlign: 'center', marginBottom: '80px' }}>
-            <h2 style={{
-              fontFamily: 'Newsreader, serif',
-              fontSize: 'clamp(32px, 4vw, 48px)',
-              fontWeight: 600,
-              marginBottom: '20px',
-              color: 'var(--ink)',
-              letterSpacing: '-0.01em'
-            }}>
-              Who we are
-            </h2>
-            <p style={{ color: 'var(--ink-muted)', fontSize: '20px', lineHeight: 1.4 }}>
-              An unparalleled team of battle-hardened technologists and strategists.
-            </p>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '40px' }}>
-            {/* All 6 service pillars with enhanced styling */}
-            {[
-              { title: "Defense & Security", delay: 100, items: [
-                "Battlefield Validation & TRL Acceleration — live-combat trials that push dual-use tech from prototype to TRL 7+.",
-                "Combat Trend Intelligence — data-driven briefs on how drones, AI, and EW reshape force composition and platform relevance.",
-                "Dual-Use Tech Scouting & Integration — source frontline innovations and adapt them for civilian markets."
-              ]},
-              { title: "Enterprise & Industry", delay: 200, items: [
-                "Industry AI Horizon Scanning & ROI Roadmaps — map emerging trends, size value pools, and build multi-year investment strategies.",
-                "Industry Transformation Programs — end-to-end AI-adoption playbooks covering budgeting, vendor selection, and change management.",
-                "Implementation PMO & Change Acceleration — orchestrate pilots, vendor partnerships, and talent upskilling to embed AI at speed and scale."
-              ]},
-              { title: "Education & Training", delay: 300, items: [
-                "Executive War-Room Workshops — red-team scenarios and crisis simulations translating frontline insight into boardroom action.",
-                "Executive AI Education — targeted workshops and briefings that turn technical advances into decisive strategy."
-              ]},
-              { title: "Healthcare", delay: 400, items: [
-                "AI-Powered Support for Autistic Children — Smart Room sensor-AI kit deciphers each child's stress and engagement cues in real time, giving families and clinicians instant guidance and restoring up to ten calm hours weekly."
-              ]},
-              { title: "AI Behavioral Analysis", delay: 500, items: [
-                "Privacy-First Crowd-Analytics Layer — converts ordinary cameras into live dashboards of audience mood and engagement, clustering people by real-time stance without storing personal identities."
-              ]},
-              { title: "Logistics & Supply Chain", delay: 600, items: [
-                "Ukraine Grain Corridor Risk-Free Route Optimisation — AI blends satellite AIS feeds, conflict-zone intelligence, and other data to chart dynamic, low-risk maritime corridors that let grain convoys sidestep Russian interdiction."
-              ]}
-            ].map((service, idx) => (
-              <div key={service.title} className="card scroll-animate" style={{
-                padding: '40px',
-                transitionDelay: `${service.delay}ms`,
-                position: 'relative',
-                overflow: 'hidden'
-              }}>
-                <div style={{ position: 'relative', zIndex: 1 }}>
-                  <h3 style={{ fontFamily: 'Newsreader, serif', fontSize: '26px', fontWeight: 600, marginBottom: '24px', color: 'var(--ink)' }}>
-                    {service.title}
-                  </h3>
-                  <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                    {service.items.map((item, itemIdx) => (
-                      <li key={itemIdx} style={{ marginBottom: '16px', paddingLeft: '20px', position: 'relative', color: 'var(--ink-muted)', lineHeight: 1.6 }}>
-                        <span style={{ position: 'absolute', left: 0, color: 'var(--accent-2)', fontSize: '18px' }}>•</span>
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Section Transition */}
-      <SectionTransition variant="dots" color="teal" />
-
-      {/* Enhanced Team Section */}
-      <section id="team" style={{ padding: '140px 0', background: 'var(--bg-2)', position: 'relative' }}>
-        <div className="container">
-          <div className="scroll-animate" style={{ textAlign: 'center', marginBottom: '60px' }}>
-            <h3 style={{
-              fontFamily: 'Newsreader, serif',
-              fontSize: 'clamp(28px, 3vw, 36px)',
-              fontWeight: 600,
-              marginBottom: '20px',
-              color: 'var(--ink)'
-            }}>
-              Leadership Team
-            </h3>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '40px' }}>
-            {leadership.map((member, index) => (
-              <LeadershipCard key={member.name} member={member} index={index} />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Section Transition */}
-      <SectionTransition variant="wave" color="purple" />
-
-      {/* Trust Strip */}
-      <section className="scroll-animate" style={{ padding: '80px 0', background: 'var(--bg-1)' }}>
-        <div className="container" style={{ textAlign: 'center' }}>
-          <p style={{ color: 'var(--ink-muted)', marginBottom: '40px', fontSize: '16px' }}>
-            Selected projects & partners
-          </p>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '60px', flexWrap: 'wrap', opacity: 0.6 }}>
-            {[...Array(4)].map((_, i) => (
-              <div key={i} style={{
-                width: '140px',
-                height: '70px',
-                background: 'var(--stroke)',
-                borderRadius: '12px',
-                transition: 'all 0.3s ease'
-              }}></div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Section Transition */}
-      <SectionTransition variant="wave" color="teal" />
-
-      {/* Selected Projects Section */}
-      <section id="projects" style={{ padding: '140px 0', background: 'var(--bg-1)', position: 'relative' }}>
-        <div className="container">
-          <div className="scroll-animate" style={{ textAlign: 'center', marginBottom: '80px' }}>
-            <h2 style={{
-              fontFamily: 'Newsreader, serif',
-              fontSize: 'clamp(32px, 4vw, 48px)',
-              fontWeight: 600,
-              marginBottom: '20px',
-              color: 'var(--ink)',
-              letterSpacing: '-0.01em'
-            }}>
-              Our Experts' Impact Snapshots
-            </h2>
-            <p style={{ color: 'var(--ink-muted)', fontSize: '20px', lineHeight: 1.4 }}>
-              Measurable results from the frontlines of technology and conflict.
-            </p>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(500px, 1fr))', gap: '60px' }}>
-            {/* Defense & Security Cases */}
-            <div className="scroll-animate">
-              <h3 style={{ 
-                fontSize: '24px', 
-                fontWeight: 600, 
-                color: 'var(--ink)', 
-                marginBottom: '32px',
-                paddingLeft: '16px',
-                borderLeft: '4px solid var(--accent-2)'
-              }}>
-                Defense & Security Cases
-              </h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                {[
-                  { title: "FPV Drone Swarms", description: "Concept-to-combat deployment in 90 days; reduced artillery expenditure by 15% on active fronts." },
-                  { title: "NATO Weapon TRL Tests", description: "Frontline evaluation of precision-guided munitions cut integration timelines by 40% for Western primes." },
-                  { title: "US Legislative Briefings", description: "Delivered classified analytics on battlefield AI innovation to the U.S. Congress and state defense committees, informing multi-billion-dollar tech appropriations." },
-                  { title: "Counter-UAV Shield", description: "Battlefield-trained anti-drone AI neutralised 85% of hostile drones during live defence of energy infrastructure." },
-                  { title: "Disinformation Defence", description: "Real-time anti-fake system flagged 40,000 deepfakes in 24h, safeguarding public communications." }
-                ].map((item, index) => (
-                  <div key={index} style={{ 
-                    padding: '24px',
-                    background: 'var(--bg-2)',
-                    borderRadius: '12px',
-                    border: '1px solid var(--stroke)',
-                    transition: 'all 0.3s ease',
-                    cursor: 'default'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--accent-2)';
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--stroke)';
-                    e.currentTarget.style.transform = 'translateY(0)';
-                  }}>
-                    <h4 style={{ 
-                      fontSize: '18px',
-                      fontWeight: 600,
-                      color: 'var(--ink)',
-                      marginBottom: '8px'
-                    }}>
-                      {item.title}
-                    </h4>
-                    <p style={{ 
-                      color: 'var(--ink-muted)',
-                      fontSize: '16px',
-                      lineHeight: 1.5,
-                      margin: 0
-                    }}>
-                      {item.description}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Civil Industries Cases */}
-            <div className="scroll-animate" style={{ transitionDelay: '200ms' }}>
-              <h3 style={{ 
-                fontSize: '24px', 
-                fontWeight: 600, 
-                color: 'var(--ink)', 
-                marginBottom: '32px',
-                paddingLeft: '16px',
-                borderLeft: '4px solid var(--accent-2)'
-              }}>
-                Civil Industries Cases
-              </h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                {[
-                  { title: "Mining Vision Suite", description: "Adapted frontline computer-vision pipelines to ore-grading, boosting yield by 8% and cutting downtime 30%." },
-                  { title: "Smart Transport Analytics", description: "Military-grade sensor fusion repurposed for rail logistics, increasing cargo throughput 25% with zero safety incidents." },
-                  { title: "Energy Inspection", description: "Computer-vision drones cut on-site inspection costs for a major power utility by 90%." },
-                  { title: "Border Efficiency", description: "Automated CV screening reduced manual checkpoint labour by 85% while tripling throughput." },
-                  { title: "Privacy Compliance", description: "Video-anonymisation AI delivered 99% analytic fidelity with full GDPR/CCPA clearance." },
-                  { title: "Financial Services", description: "Behavioural AI analytics boosted customer satisfaction and repeat usage, driving a loyalty-led revenue uplift of US $1B for a leading finance provider." }
-                ].map((item, index) => (
-                  <div key={index} style={{ 
-                    padding: '24px',
-                    background: 'var(--bg-2)',
-                    borderRadius: '12px',
-                    border: '1px solid var(--stroke)',
-                    transition: 'all 0.3s ease',
-                    cursor: 'default'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--accent-2)';
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--stroke)';
-                    e.currentTarget.style.transform = 'translateY(0)';
-                  }}>
-                    <h4 style={{ 
-                      fontSize: '18px',
-                      fontWeight: 600,
-                      color: 'var(--ink)',
-                      marginBottom: '8px'
-                    }}>
-                      {item.title}
-                    </h4>
-                    <p style={{ 
-                      color: 'var(--ink-muted)',
-                      fontSize: '16px',
-                      lineHeight: 1.5,
-                      margin: 0
-                    }}>
-                      {item.description}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Partners Section */}
-      <section style={{ padding: '80px 0', background: 'var(--bg-2)', position: 'relative' }}>
-        <div className="container">
-          <div className="scroll-animate" style={{ textAlign: 'center', marginBottom: '60px' }}>
-            <h2 style={{
-              fontFamily: 'Newsreader, serif',
-              fontSize: 'clamp(28px, 3vw, 36px)',
-              fontWeight: 600,
-              color: 'var(--ink)',
-              letterSpacing: '-0.01em'
-            }}>
-              Our Partners & Ecosystem
-            </h2>
-          </div>
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
-            gap: '40px',
-            alignItems: 'center',
-            justifyItems: 'center'
-          }}>
-            {["KPMG", "Techstars", "NVIDIA"].map((partner, index) => (
-              <div 
-                key={partner}
-                className="scroll-animate"
-                style={{ 
-                  transitionDelay: `${150 + index * 100}ms`,
-                  textAlign: 'center'
-                }}
-              >
-                <span style={{
-                  fontSize: '32px',
-                  fontWeight: 700,
-                  color: 'var(--ink-muted)',
+                justifyContent: 'center',
+                cursor: 'pointer',
                   transition: 'all 0.3s ease',
-                  cursor: 'default',
-                  display: 'block'
+                      color: 'var(--ink)',
+                fontSize: '18px'
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.color = 'var(--accent-1)';
-                  e.currentTarget.style.transform = 'scale(1.05)';
+                e.currentTarget.style.borderColor = 'var(--accent-1)';
+                e.currentTarget.style.transform = 'scale(1.1)';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.color = 'var(--ink-muted)';
+                    e.currentTarget.style.borderColor = 'var(--stroke)';
                   e.currentTarget.style.transform = 'scale(1)';
-                }}>
-                  {partner}
-                </span>
+              }}
+              aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {isDarkMode ? '☀️' : '🌙'}
+            </button>
               </div>
-            ))}
           </div>
+      </header>
+      {/* Mobile dropdown */}
+      {isMenuOpen && (
+        <div className="container" style={{ padding: '8px 20px 16px' }}>
+          <nav className="mobile-nav scroll-animate" data-immediate="true" style={{ display: 'grid', gap: 12 }}>
+            <Link onClick={() => setIsMenuOpen(false)} to="/projects" style={{ color: 'var(--ink)', textDecoration: 'none' }}>Projects</Link>
+            <Link onClick={() => setIsMenuOpen(false)} to="/consulting" style={{ color: 'var(--ink)', textDecoration: 'none' }}>Consulting</Link>
+            <Link onClick={() => setIsMenuOpen(false)} to="/team" style={{ color: 'var(--ink)', textDecoration: 'none' }}>Team</Link>
+            <Link onClick={() => setIsMenuOpen(false)} to="/community" style={{ color: 'var(--ink)', textDecoration: 'none' }}>Community</Link>
+            <a onClick={() => setIsMenuOpen(false)} href="/#contact" style={{ color: 'var(--ink)', textDecoration: 'none' }}>Contact</a>
+          </nav>
         </div>
-      </section>
+      )}
 
-      {/* Section Transition */}
-      <SectionTransition variant="gradient" color="blue" />
-
-      {/* CTA Section */}
-      <section id="contact" className="scroll-animate" style={{ padding: '100px 0', background: 'var(--bg-2)' }}>
-        <div className="container" style={{ textAlign: 'center' }}>
-          <h2 style={{
-            fontFamily: 'Newsreader, serif',
-            fontSize: 'clamp(32px, 4vw, 48px)',
-            fontWeight: 600,
-            marginBottom: '28px',
-            color: 'var(--ink)'
-          }}>
-            Work with us
-          </h2>
-          <p style={{ color: 'var(--ink-muted)', fontSize: '20px', marginBottom: '40px', lineHeight: 1.4 }}>
-            Strategic consulting for defense, enterprise, and government clients
-          </p>
-          <a href="mailto:hello@myglobal.group" className="btn btn-primary" style={{ fontSize: '18px', padding: '16px 40px' }}>Book a briefing</a>
-        </div>
-      </section>
+      {children}
 
       {/* Footer */}
       <footer style={{ padding: '60px 0', background: 'var(--bg-1)', borderTop: '1px solid var(--stroke)' }}>
@@ -1747,17 +840,18 @@ function App() {
             </p>
             <div style={{ display: 'flex', justifyContent: 'center', gap: '40px', flexWrap: 'wrap' }}>
               {[
-                { label: 'Services', href: '#services' },
-                { label: 'Projects', href: '#projects' },
-                { label: 'Team', href: '#team' },
-                { label: 'Contact', href: '#contact' }
+                { label: 'Consulting', href: '/consulting' },
+                { label: 'Community', href: '/community' },
+                { label: 'Projects', href: '/projects' },
+                { label: 'Team', href: '/team' },
+                { label: 'Contact', href: '/#contact' }
               ].map((link) => (
-                <a key={link.label} href={link.href} style={{
+                <Link key={link.label} to={link.href} style={{
                   color: 'var(--ink-muted)',
                   fontSize: '15px',
                   textDecoration: 'none',
                   transition: 'all 0.3s ease'
-                }}>{link.label}</a>
+                }}>{link.label}</Link>
               ))}
             </div>
           </div>
@@ -1767,6 +861,24 @@ function App() {
         </div>
       </footer>
     </div>
+  );
+};
+
+function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={
+          <MainLayout>
+            <HomePage />
+          </MainLayout>
+        } />
+        <Route path="/projects" element={<MainLayout><ProjectsPage /></MainLayout>} />
+        <Route path="/consulting" element={<MainLayout><ConsultingPage /></MainLayout>} />
+        <Route path="/team" element={<MainLayout><TeamPage /></MainLayout>} />
+        <Route path="/community" element={<MainLayout><CommunityPage /></MainLayout>} />
+      </Routes>
+    </Router>
   );
 }
 
